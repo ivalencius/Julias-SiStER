@@ -1,0 +1,10 @@
+Files that have been checked/modified and don't throw errors
+- Input_File_continental_rift.m
+- initialize_grid.m
+- initialize_marker_positions.m 
+    - seed_markers_uniformly.jl
+    - locate_markers_in_grid.jl
+
+
+Known issues:
+- SiStER_initialize_marker_positions.jl or SiStER_seed_markers_uniformly.jl is slow
