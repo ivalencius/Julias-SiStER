@@ -29,5 +29,5 @@ for kk = 1:Nphase
 end
 im = Int.(im);
 
-return [im]
+return im
 end

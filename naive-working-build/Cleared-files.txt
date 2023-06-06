@@ -4,6 +4,8 @@ Files that have been checked/modified and don't throw errors
 - initialize_marker_positions.m 
     - seed_markers_uniformly.jl
     - locate_markers_in_grid.jl
+- SiSter_interp_phases_to_normal_nodes.jl
+
 
 
 Known issues:

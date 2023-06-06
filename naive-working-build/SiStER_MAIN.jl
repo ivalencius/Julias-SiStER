@@ -17,41 +17,54 @@
 #     InpFil = input("Input file ? ','s");
 # end
 # run(InpFil)
-InpFil = "SiStER_Input_File_continental_rift.jl"
-include(InpFil)
+# InpFil = "SiStER_Input_File_continental_rift.jl"
+# include(InpFil)
 
-# Redefined functions --> use as needed
-# function meshgrid(x, y)
-#     X = [i for i in x, _ in 1:length(y)]
-#     Y = [j for _ in 1:length(x), j in y]
-#     return X', Y'
-# end
+# # Redefined functions --> use as needed
+# # function meshgrid(x, y)
+# #     X = [i for i in x, _ in 1:length(y)]
+# #     Y = [j for _ in 1:length(x), j in y]
+# #     return X', Y'
+# # end
 
-# construct grid & initialize marker / node arrays
-print("---------------\n")
-print("INITIALIZING\n")
-print("---------------\n")
-print("For continental drift: Nx = 106, NY=43 (from MATLAB solution)\n")
-print("Mismatch due to round() rounding 4.5 to nearest even integer, not up to 5 like in MATLAB\n")
-print("SiStER_initialize_grid.jl (line 40)\n")
-include("SiStER_Initialize.jl")
+# Sourced from https://github.com/ChrisRackauckas/VectorizedRoutines.jl/blob/master/src/matlab.jl
+# function accumarray2(subs, val, fun=sum, fillval=0; sz=maximum(subs,1), issparse=false)
+#     counts = Dict()
+#     for i = 1:size(subs,1)
+#          counts[subs[i,:]]=[get(counts,subs[i,:],[]);val[i...]]
+#     end
+#     A = fillval*ones(sz...)
+#     for j = keys(counts)
+#          A[j...] = fun(counts[j])
+#     end
+#     issparse ? sparse(A) : A
+#  end
+
+# # construct grid & initialize marker / node arrays
+# print("---------------\n")
+# print("INITIALIZING\n")
+# print("---------------\n")
+# print("For continental drift: Nx = 106, NY=43 (from MATLAB solution)\n")
+# print("Mismatch due to round() rounding 4.5 to nearest even integer, not up to 5 like in MATLAB\n")
+# print("SiStER_initialize_grid.jl (line 40)\n")
+# include("SiStER_Initialize.jl")
 
 using JLD2
-@save "running-vars.jld2"
-# @load "running-vars.jld2"
+# @save "running-vars.jld2"
+@load "running-vars.jld2"
 
 # BEGIN TIME LOOP #########################################################
 time=0;
 
 # for t=1:Nt # time loop
     
-#     print("STARTING ITERATION: " * string(t) * " out of " * string(Nt)*"\n")
+    print("STARTING ITERATION: " * string(t) * " out of " * string(Nt)*"\n")
     
-#     # update time
-#     time=time+dt_m;
+    # update time
+    time=time+dt_m;
     
-#     # Here we prepare nodal arrays to feed the Stokes solver 
-#     SiStER_material_props_on_nodes
+    # Here we prepare nodal arrays to feed the Stokes solver 
+    include("SiStER_material_props_on_nodes.jl")
 
 #     ### SOLVE STOKES WITH NON-LINEAR RHEOLOGY HERE 
 #     SiStER_flow_solve
@@ -97,14 +110,14 @@ time=0;
 #     # here we do the same for the marker chain that keeps track of topography
 #     #######################################################################
 
-#     print("---------------")
-#     print(["END OF ITERATION: ' num2str(t) ' out of ' num2str(Nt) ' - SIMULATION TIME: ' num2str(time/365.25/24/3600/1000) ' kyrs."])
-#     print("--------------------------------")
-#     print("--------------------------------")
+#     print("---------------\n")
+#     print("END OF ITERATION: "* string(t) *" out of "* string(Nt) *" - SIMULATION TIME: "* string(time/365.25/24/3600/1000) *" kyrs.\n")
+#     print("--------------------------------\n")
+#     print("--------------------------------\n")
     
 
 # end
 
-# print("FIN")
+print("FIN")
 
     

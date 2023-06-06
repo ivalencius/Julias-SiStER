@@ -20,7 +20,8 @@ jcn = Int.(jcn);
 
 # assign marker phases
 include("SiStER_initialize_marker_phases.jl")
-(im) = SiStER_initialize_marker_phases(Nphase,GEOM,xm,ym);
+im = SiStER_initialize_marker_phases(Nphase,GEOM,xm,ym);
+im = im[1]; # returned as vector of vector for some reason
 # initialize marker plastic strain [to zero] & strain rate [to one]
 ep=zeros(size(xm));
 epNH=zeros(size(xm));
