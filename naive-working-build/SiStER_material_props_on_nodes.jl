@@ -23,7 +23,8 @@ phase_s = SiStER_interp_phases_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,im, Nphase);
 # phase_s=round(phase_s*1e10)/1e10; #prevents a case in which phase_n>NPhase
 
 # GET MARKER DENSITIES 
-[rhom]=SiStER_get_density[im,Tm,MAT];
+include("SiStER_get_density.jl")
+rhom = SiStER_get_density(im,Tm,MAT);
 # pass density to nodes
 [n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,rhom];
 rho  = n2interp[1].data;
