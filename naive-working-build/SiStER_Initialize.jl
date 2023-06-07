@@ -44,6 +44,7 @@ end
 # pass initial nodal T to markers
 include("SiStER_interp_shear_nodes_to_markers.jl")
 Tm = SiStER_interp_shear_nodes_to_markers(T,x,y,xm,ym,icn,jcn);
+Tm = Tm[1][1];
 Tm0 = copy(Tm);
 
 # initialize nodal strain rate & other useful arrays
