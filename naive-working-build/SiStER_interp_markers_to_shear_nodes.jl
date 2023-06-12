@@ -1,4 +1,6 @@
 using Interpolations
+using RecursiveArrayTools
+
 function SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,quad,x,y,varargin)
 # [n2interp] = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,quad,x,y,varargin)
 # interpolates marker properties to shear nodes
@@ -25,12 +27,14 @@ dx=diff(x);
 dy=diff(y);
 
 # MITTELSTAEDT - check for number of properties to interpolate
-numV = length(varargin);
-
+numV = size(varargin, 2);
 
 # MITTELSTAEDT # establish interpolants matrices
 # Converted from array of (1, numV) filled with (Ny, Nx) structs
-n2interp = repeat(zeros(Ny,Nx), outer = (1, 1, numV));
+# n2interp = repeat(zeros(Ny,Nx), outer = (1, 1, numV));
+# Read: https://stackoverflow.com/questions/47818035/julia-three-dimensional-arrays-performance
+# test n2interp = zeros(Ny, Nx, numV);
+n2interp = VectorOfArray([zeros(Ny, Nx) for _ in 1:numV]);
 
 # JCN = interp1(x, 1:length(x), xm, "nearest', 'extrap"); ## these are like the jcn & icn elsewhere, except the nodes are centered instead of upper left.
 # ICN = interp1(y, 1:length(y), ym, "nearest', 'extrap"); ## this makes a lot of the indexing much simpler below.
@@ -56,6 +60,7 @@ cell1 = BitVector(undef, length(xm));
 cell2 = BitVector(undef, length(xm));
 cell3 = BitVector(undef, length(xm));
 cell4 = BitVector(undef, length(xm));
+
 for i ∈ 1:length(cell1)
     cell1[i] = center[i] & ((xm[i]-xJCN[i]) > 0) & ((ym[i] - yICN[i]) > 0);  ## these are logical arrays that index the original quadrants
     cell2[i] = shiftLeft[i] & ((xm[i]-xJCN[i]) < 0) & ((ym[i] - yICN[i]) > 0);
@@ -69,7 +74,6 @@ wc1 = 0.25;
 wc2 = 0.25;
 wc3 = 0.25;
 wc4 = 0.25;
-
 
 # cell 1 [i,j,1]
 
@@ -112,17 +116,22 @@ wm4 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
 w4 = accumarray(hcat(ICN[cell4], JCN[cell4]), wm4, sz=(Ny, Nx));
 
 #loop over material properties to interpolate
-# THIS IS VERY SLOW
+# THIS IS VERY SLOW --> using varargin[vn]*cell1[vn]
+# vn = 50000 it yields 0.0025 for all
 for vn = 1:numV
-    n2interp[:,:,vn] = (
-        wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), (varargin[vn]*cell1[vn]).*wm1, sz=(Ny, Nx))./w1 +
-        wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), (varargin[vn]*cell2[vn]).*wm2, sz=(Ny, Nx))./w2 +
-        wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), (varargin[vn]*cell3[vn]).*wm3, sz=(Ny, Nx))./w3 +
-        wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), (varargin[vn]*cell4[vn]).*wm4, sz=(Ny, Nx))./w4
+    # n2interp[vn] = (
+    #     wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), (varargin[vn]*cell1[vn]).*wm1, sz=(Ny, Nx))./w1 +
+    #     wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), (varargin[vn]*cell2[vn]).*wm2, sz=(Ny, Nx))./w2 +
+    #     wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), (varargin[vn]*cell3[vn]).*wm3, sz=(Ny, Nx))./w3 +
+    #     wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), (varargin[vn]*cell4[vn]).*wm4, sz=(Ny, Nx))./w4
+    #     )./(wc1+wc2+wc4+wc4);
+    n2interp[vn] = (
+        wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(Ny, Nx))./w1 +
+        wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(Ny, Nx))./w2 +
+        wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), varargin[:, vn][cell3].*wm3, sz=(Ny, Nx))./w3 +
+        wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), varargin[:, vn][cell4].*wm4, sz=(Ny, Nx))./w4
         )./(wc1+wc2+wc4+wc4);
 end
-
-
 
 ## EDGES
 
@@ -134,205 +143,221 @@ shifted = (jcn.<Nx-1) .& (icn.==1);
 # cell 1
 
 cell1 = shifted .& (quad.==2);
-cell1 = vec(cell1')
+cell1 = vec(cell1');
 
-ddx = dx[JCN[cell1]-1];
+ddx = dx[JCN[cell1].-1];
 ddy = dy[1];
-dxm = xm[cell1] - x[JCN[cell1]];
-dym = ym[cell1] - y[ICN[cell1]];
-wm1 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray[[ICN[cell1]", JCN[cell1]"], wm1];
+dxm = xm[cell1] .- xJCN[cell1];
+dym = ym[cell1] .- yICN[cell1];
+wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w1 = accumarray(hcat(ICN[cell1], JCN[cell1]), wm1, sz=(Ny, Nx));
 
 # cell 2 
 
-cell2 = topEdge & quad==1;
+cell2 = topEdge .& (quad.==1);
+cell2 = vec(cell2');
 
 ddx = dx[JCN[cell2]];
 ddy = dy[1];
-dxm = xm[cell2] - x[JCN[cell2]];
-dym = ym[cell2] - y[ICN[cell2]];
-wm2 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w2  = accumarray[[ICN[cell2]", JCN[cell2]"], wm2];
+dxm = xm[cell2] .- xJCN[cell2];
+dym = ym[cell2] .- yICN[cell2];
+wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w2  = accumarray(hcat(ICN[cell2], JCN[cell2]), wm2, sz=(Ny,Nx));
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (wc1*accumarray[[ICN[cell1]", JCN[cell1]"], varargin[vn](cell1).*wm1]./w1 + ...
-        wc2*accumarray[[ICN[cell2]", JCN[cell2]"], varargin[vn](cell2).*wm2]./w2)/...
-        (wc1+wc2);
-    n2interp[vn].data[1,2:end] = temp[2:end];
+    temp = (
+        wc1*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1, Nx))./w1 +
+        wc2*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1, Nx))./w2
+        )/(wc1+wc2);
+    n2interp[vn][1,2:end] = temp[1, 2:end];
 end
-
-clear w1 w2
 
 ### bottom edge
 
-bottomEdge = jcn>1 & jcn<Nx & icn==Ny-1;
-shifted =    jcn<Nx-1       & icn==Ny-1;
+bottomEdge = (jcn.>1) .& (jcn.<Nx) .& (icn.==Ny-1);
+shifted =    (jcn.<Nx-1) .& (icn.==Ny-1);
 
 # cell 1
 
-cell1 = shifted & quad==3;
+cell1 = shifted .& (quad.==3);
+cell1 = vec(cell1');
 
-ddx = dx[JCN[cell1]-1];
+ddx = dx[JCN[cell1].-1];
 ddy = dy[Ny-1];
-dxm = xm[cell1] - x[JCN[cell1]];
-dym = ym[cell1] - y[end-1];
-wm1 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray[[ones(sum(cell1),dims=1), JCN[cell1]'], wm1];
+dxm = xm[cell1] .- xJCN[cell1];
+dym = ym[cell1] .- y[end-1];
+wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w1 = accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), wm1, sz=(1, Nx));
 
 # cell 2
 
-cell2 = bottomEdge & quad==4;
+cell2 = bottomEdge .& (quad.==4);
+cell2 = vec(cell2');
 
 ddx = dx[JCN[cell2]];
 ddy = dy[Ny-1];
-dxm = xm[cell2] - x[JCN[cell2]];
-dym = ym[cell2] - y[end-1];
-wm2 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w2  = accumarray[[ones(sum(cell2),dims=1), JCN[cell2]'], wm2];
+dxm = xm[cell2] .- xJCN[cell2];
+dym = ym[cell2] .- y[end-1];
+wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w2  = accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), wm2, sz=(1,Nx));
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (wc1*accumarray[[ones(sum(cell1),dims=1), JCN[cell1]'], varargin[vn](cell1).*wm1]./w1 + ...
-        wc2*accumarray[[ones(sum(cell2),dims=1), JCN[cell2]'], varargin[vn](cell2).*wm2]./w2)/...
-        (wc1+wc2);
-    n2interp[vn].data[Ny,2:end] = temp[2:end];
+    temp = (
+        wc1*accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1,Nx))./w1 +
+        wc2*accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1,Nx))./w2
+        )/(wc1+wc2);
+    n2interp[vn][Ny,2:end] = temp[1, 2:end];
 end
 
 ### left edge
 
-leftEdge = jcn==1 & icn>1 & icn<Ny;
-shifted  = jcn==1 & icn<Ny-1;
+leftEdge = (jcn.==1) .& (icn.>1) .& (icn.<Ny);
+shifted  = (jcn.==1) .& (icn.<Ny-1);
 
 # cell 1
 
-cell1 = shifted & quad==4;
+cell1 = shifted .& (quad.==4);
+cell1 = vec(cell1');
 
 ddx = dx[1];
-ddy = dy[ICN[cell1]-1];
-dxm = xm[cell1] - x[1];
-dym = ym[cell1] - y[ICN[cell1]];
-wm1 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray[[ICN[cell1]', ones(sum(cell1),dims=1)], wm1];
+ddy = dy[ICN[cell1].-1];
+dxm = xm[cell1] .- x[1];
+dym = ym[cell1] .- yICN[cell1];
+wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
 
 # cell 2
 
-cell2 = leftEdge & quad==1;
+cell2 = leftEdge .& (quad.==1);
+cell2 = vec(cell2');
 
 ddx = dx[1];
 ddy = dy[ICN[cell2]];
-dxm = xm[cell2] - x[1];
-dym = ym[cell2] - y[ICN[cell2]];
-wm2 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w2 = accumarray[[ICN[cell2]', ones(sum(cell2),dims=1)], wm2];
+dxm = xm[cell2] .- x[1];
+dym = ym[cell2] .- yICN[cell2];
+wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (wc1*accumarray[[ICN[cell1]', ones(sum(cell1),dims=1)], varargin[vn](cell1).*wm1]./w1 + ...
-        wc2*accumarray[[ICN[cell2]', ones(sum(cell2),dims=1)], varargin[vn](cell2).*wm2]./w2)/...
-        (wc1+wc2);
-    n2interp[vn].data[2:end-1, 1] = temp[2:end];
+    temp = (
+        wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
+        wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
+        )/(wc1+wc2);
+    n2interp[vn][2:end-1, 1] = temp[2:end-1];
 end
 
 ### right edge
 
-rightEdge = jcn==Nx-1 & icn>1 & icn<Ny;
-shifted =   jcn==Nx-1 & icn<Ny-1;
+rightEdge = (jcn.==Nx-1) .& (icn.>1) .& (icn.<Ny);
+shifted = (jcn.==Nx-1) .& (icn.<Ny-1);
 
 # cell 1
 
-cell1 = shifted & quad==3;
+cell1 = shifted .& (quad.==3);
+cell1 = vec(cell1');
 
 ddx = dx[Nx-1];
-ddy = dy[ICN[cell1]-1];
-dxm = xm[cell1] - x[Nx-1];
-dym = ym[cell1] - y[ICN[cell1]];
-wm1 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray[[ICN[cell1]', ones(sum(cell1),dims=1)], wm1];
+ddy = dy[ICN[cell1].-1];
+dxm = xm[cell1] .- x[Nx-1];
+dym = ym[cell1] .- yICN[cell1];
+wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
 
 # cell 2
 
-cell2 = rightEdge & quad==2;
+cell2 = rightEdge .& (quad.==2);
+cell2 = vec(cell2');
 
 ddx = dx[Nx-1];
 ddy = dy[ICN[cell2]];
-dxm = xm[cell2] - x[Nx-1];
-dym = ym[cell2] - y[ICN[cell2]];
-wm2 = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)./(ddx.*ddy);
-w2 = accumarray[[ICN[cell2]', ones(sum(cell2),dims=1)], wm2];
+dxm = xm[cell2] .- x[Nx-1];
+dym = ym[cell2] .- yICN[cell2];
+wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
+w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (wc1*accumarray[[ICN[cell1]', ones(sum(cell1),dims=1)], varargin[vn](cell1).*wm1]./w1 + ...
-        wc2*accumarray[[ICN[cell2]', ones(sum(cell2),dims=1)], varargin[vn](cell2).*wm2]./w2)/...
-        (wc1+wc2);
-    n2interp[vn].data[2:end-1, Nx] = temp[2:end];
+    temp = (
+        wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
+        wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
+        )/(wc1+wc2);
+    n2interp[vn][2:end-1, Nx] = temp[2:end-1];
 end
 
 ## CORNERS
 
 # upper left
 
-upperLeft = jcn==1 & icn==1 & quad==1;
+upperLeft = (jcn.==1) .& (icn.==1) .& (quad.==1);
+upperLeft = vec(upperLeft');
 
 ddx = dx[1];
 ddy = dy[1];
-dxm = xm[upperLeft] - x[1];
-dym = ym[upperLeft] - y[1];
-wm  = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)/(ddx*ddy);
+dxm = xm[upperLeft] .- x[1];
+dym = ym[upperLeft] .- y[1];
+wm  = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)/(ddx*ddy);
 wco = sum(wm);
 
 for vn = 1:numV
-    n2interp[vn].data[1,1] = sum(varargin[vn](upperLeft).*wm)./wco;
+    # Check what this line does...
+    # n2interp[vn][1,1] = sum((varargin[vn]*upperLeft[vn]).*wm)./wco;
+    n2interp[vn][1,1] = sum(varargin[:, vn][upperLeft].*wm)./wco; # this should be what I want...
 end
 
 # upper right
 
-upperRight = icn==1 & jcn==Nx-1 & quad==2;
+upperRight = (icn.==1) .& (jcn.==Nx-1) .& (quad.==2);
+upperRight = vec(upperRight');
 
 ddx = dx[Nx-1];
 ddy = dy[1];
-dxm = xm[upperRight] - x[Nx-1];
-dym = ym[upperRight] - y[1];
-wm  = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)/(ddx*ddy);
+dxm = xm[upperRight] .- x[Nx-1];
+dym = ym[upperRight] .- y[1];
+wm  = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)/(ddx*ddy);
 wco = sum(wm);
 
 for vn = 1:numV
-    n2interp[vn].data[1,Nx] = sum(varargin[vn](upperRight).*wm)./wco;
+    # n2interp[vn][1,Nx] = sum((varargin[vn]*upperRight[vn]).*wm)./wco;
+    n2interp[vn][1,Nx] = sum(varargin[:, vn][upperRight].*wm)./wco;
 end
 
 # lower Right
 
-lowerRight = icn==Ny-1 & jcn==Nx-1 & quad==3;
+lowerRight = (icn.==Ny-1) .& (jcn.==Nx-1) .& (quad.==3);
+lowerRight = vec(lowerRight');
 
 ddx = dx[Nx-1];
 ddy = dy[Ny-1];
-dxm = xm[lowerRight] - x[Nx-1];
-dym = ym[lowerRight] - y[Ny-1];
-wm  = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)/(ddx*ddy);
+dxm = xm[lowerRight] .- x[Nx-1];
+dym = ym[lowerRight] .- y[Ny-1];
+wm  = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)/(ddx*ddy);
 wco = sum(wm);
 
 for vn = 1:numV
-    n2interp[vn].data[Ny,Nx] = sum(varargin[vn](lowerRight).*wm)./wco;
+    n2interp[vn][Ny,Nx] = sum(varargin[:, vn][lowerRight].*wm)./wco;
 end
 
 # lower left
 
-lowerLeft = icn==Ny-1 & jcn==1 & quad==4;
+lowerLeft = (icn.==Ny-1) .& (jcn.==1) .& (quad.==4);
+lowerLeft = vec(lowerLeft');
 
 ddx = dx[1];
 ddy = dy[Ny-1];
-dxm = xm[lowerLeft] - x[1];
-dym = ym[lowerLeft] - y[Ny-1];
-wm  = 1 - (dxm.*dym + (ddx-dxm).*dym + (ddy-dym).*dxm)/(ddx*ddy);
+dxm = xm[lowerLeft] .- x[1];
+dym = ym[lowerLeft] .- y[Ny-1];
+wm  = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)/(ddx*ddy);
 wco = sum(wm);
 
 for vn = 1:numV
-    n2interp[vn].data[Ny,1] = sum(varargin[vn](lowerLeft).*wm)./wco;
+    n2interp[vn][Ny,1] = sum(varargin[:, vn][lowerLeft].*wm)./wco;
 end
 
 

@@ -3,9 +3,9 @@
 # for Picard iterations [J.-A.O.]
 
 # PHASE PROPORTIONS AT NORMAL AND SHEAR NODES. G.Ito 8/16
-include("SiStER_interp_phases_to_normal_nodes.jl")
+include("SiStER_interp_phases_to_normal_nodes.jl");
 phase_n = SiStER_interp_phases_to_normal_nodes(xm,ym,icn,jcn,x,y,im, Nphase); 
-include("SiStER_interp_phases_to_shear_nodes.jl")
+include("SiStER_interp_phases_to_shear_nodes.jl");
 phase_s = SiStER_interp_phases_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,im, Nphase);
 
 # phase_n & _s is a Ny*Nx*Nphase array containing the proportion
@@ -25,9 +25,15 @@ phase_s = SiStER_interp_phases_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,im, Nphase);
 # GET MARKER DENSITIES 
 include("SiStER_get_density.jl")
 rhom = SiStER_get_density(im,Tm,MAT);
+
+using JLD2
+# @save "running-vars.jld2";
+@load "running-vars.jld2";
+
 # pass density to nodes
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,rhom];
-rho  = n2interp[1].data;
+include("SiStER_interp_markers_to_shear_nodes.jl")
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,rhom);
+rho  = n2interp[1];
 
 # GET MARKER ELASTIC PROPERTIES  G.Ito 8/16
 [Gm]=SiStER_get_elastic_moduli[im,MAT];
