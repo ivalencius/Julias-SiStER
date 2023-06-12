@@ -10,7 +10,7 @@ include("SiStER_initialize_grid.jl")
 # initialize marker arrays & positions
 include("SiStER_initialize_marker_positions.jl")
 (xm, ym) = SiStER_initialize_marker_positions(xsize,ysize,dx,dy,Mquad); # THIS IS VERY SLOW
-print("**Number of markers: "*string(length(xm))*"**\n")
+print("**Number of markers: "*string(length(xm))*"**\n");
 
 # locate markers with respect to grid()
 include("SiStER_locate_markers_in_grid.jl")
@@ -21,7 +21,7 @@ jcn = Int.(jcn);
 # assign marker phases
 include("SiStER_initialize_marker_phases.jl")
 im = SiStER_initialize_marker_phases(Nphase,GEOM,xm,ym);
-im = im[1]; # returned as vector of vector for some reason
+# im = im[1]; # returned as vector of a vector for some reason
 # initialize marker plastic strain [to zero] & strain rate [to one]
 ep=zeros(size(xm));
 epNH=zeros(size(xm));
