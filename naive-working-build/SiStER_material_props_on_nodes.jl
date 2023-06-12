@@ -26,64 +26,68 @@ phase_s = SiStER_interp_phases_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,im, Nphase);
 include("SiStER_get_density.jl")
 rhom = SiStER_get_density(im,Tm,MAT);
 
-using JLD2
-# @save "running-vars.jld2";
-@load "running-vars.jld2";
 
 # pass density to nodes
 include("SiStER_interp_markers_to_shear_nodes.jl")
 n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,rhom);
 rho  = n2interp[1];
 
+
 # GET MARKER ELASTIC PROPERTIES  G.Ito 8/16
-[Gm]=SiStER_get_elastic_moduli[im,MAT];
+include("SiStER_get_elastic_moduli.jl")
+Gm = SiStER_get_elastic_moduli(im,MAT);
 # pass shear modulus to nodes
-[n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,1./Gm];
-Gn=1./(n2interp[1].data);
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,1./Gm];
-Gs = 1./(n2interp[1].data);   
+include("SiStER_interp_markers_to_normal_nodes.jl")
+n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,1 ./ Gm);
+Gn=1 ./ (n2interp[1]);
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,1 ./ Gm);
+Gs = 1 ./ (n2interp[1]);   
 
 # PROPERTIES FOR PLASTICITY  G.Ito 8/16
-[cohes]=SiStER_get_cohesion[im,ep,MAT]; # cohesion depends on plastic strain
-[n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,cohes];
-Cohes_n=n2interp[1].data;
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,cohes];
-Cohes_s = n2interp[1].data;  
+include("SiStER_get_cohesion.jl")
+cohes=SiStER_get_cohesion(im, ep, MAT); # cohesion depends on plastic strain
+n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,cohes);
+Cohes_n=n2interp[1];
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,cohes);
+Cohes_s = n2interp[1];  
 
 # GET FRICTION BASED ON MARKERS J.A. Olive 4/17
-[fric]=SiStER_get_friction[im,ep,MAT]; # friction depends on plastic strain
-[n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,fric];
-Mu_n=n2interp[1].data;
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,fric];
-Mu_s = n2interp[1].data; 
+include("SiStER_get_friction.jl")
+fric=SiStER_get_friction(im,ep,MAT); # friction depends on plastic strain
+n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,fric);
+Mu_n=n2interp[1];
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,fric);
+Mu_s = n2interp[1]; 
 
 # ADVECTED strain rate invariant G.Ito 8/16
-[n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,epsIIm];
-epsII_n=n2interp[1].data;
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,epsIIm];
-epsII_s = n2interp[1].data;  
+n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,epsIIm);
+epsII_n=n2interp[1];
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,epsIIm);
+epsII_s = n2interp[1];  
 
 
 # OLD STRESSES AND PRESSURES G.Ito 8/16
-[n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,sxxm];
-sxxOLD[:,:] = n2interp[1].data;
-[sxxOLD_s]=SiStER_interp_normal_to_shear_nodes[sxxOLD,dx,dy] 
+n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,sxxm);
+sxxOLD = n2interp[1];
+include("SiStER_interp_normal_to_shear_nodes.jl")
+sxxOLD_s=SiStER_interp_normal_to_shear_nodes(sxxOLD,dx,dy);
 
-[n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,sxym];
-sxyOLD[:,:] = n2interp[1].data;  
-[sxyOLD_n]=SiStER_interp_shear_to_normal_nodes[sxyOLD];
+n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,sxym);
+sxyOLD = n2interp[1];
+include("SiStER_interp_shear_to_normal_nodes.jl")
+sxyOLD_n = SiStER_interp_shear_to_normal_nodes(sxyOLD);
 
 #MIGHT WANT TO ADVECT PRESSURES [FOR SPEED?] G.Ito 8/16
 pold=p; 
-ps_old=SiStER_interp_normal_to_shear_nodes[p,dx,dy];
+ps_old=SiStER_interp_normal_to_shear_nodes(p,dx,dy);
 
 EXYOLD=EXY;
 EXXOLD=EXX;
-EXX_sOLD=SiStER_interp_normal_to_shear_nodes[EXX,dx,dy];
-EXY_nOLD=SiStER_interp_shear_to_normal_nodes[EXY];
+EXX_sOLD=SiStER_interp_normal_to_shear_nodes(EXX,dx,dy);
+EXY_nOLD=SiStER_interp_shear_to_normal_nodes(EXY);
 
 #TEMPERATURE ARRAYS NEEDED FOR DUCTILE RHEOLOGY  G.Ito 8/16
-[n2interp]=SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,Tm];
-Ts=n2interp[1].data;
-[n2interp]=SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,Tm];
-Tn=n2interp[1].data;
+n2interp=SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,Tm');
+Ts=n2interp[1];
+n2interp=SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,Tm');
+Tn=n2interp[1];
