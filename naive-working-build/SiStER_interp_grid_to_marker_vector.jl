@@ -15,8 +15,8 @@ w4=(dym./dy).*(1 .-dxm./dx);
 w3=(dxm./dx).*(dym./dy);
 wnodes=[w1 w2 w3 w4]';
     
-param=sum(paramnodes.*wnodes, dims = 1);
+param = sum(paramnodes.*wnodes, dims = 1);
 
+return param
 
-return [param]
 end
