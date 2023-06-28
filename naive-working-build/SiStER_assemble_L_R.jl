@@ -14,7 +14,7 @@ gx=PARAMS.gx;
 gy=PARAMS.gy;
 
 # Vector of right part initialization
-R=spzeros(Nx*Ny*3,1);
+R=zeros(Nx*Ny*3,1);
 Lii = zeros(10*Nx*Ny*3,1);
 Ljj = zeros(10*Nx*Ny*3,1);
 Lvv = zeros(10*Nx*Ny*3,1);
