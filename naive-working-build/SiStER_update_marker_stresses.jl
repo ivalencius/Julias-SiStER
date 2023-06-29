@@ -9,6 +9,6 @@ dsxy=(2*etas.*EXY-sxyOLD).*Zs;
 include("SiStER_interp_normal_nodes_to_markers.jl")
 dsxxm=SiStER_interp_normal_nodes_to_markers(dsxx,xc,yc,xm,ym,icn,jcn);
 include("SiStER_interp_shear_nodes_to_markers.jl")
-dsxym=SiStER_interp_shear_nodes_to_markers(dsxy,x,y,xm,ym,icn,jcn)[1];
+dsxym=SiStER_interp_shear_nodes_to_markers(dsxy,x,y,xm,ym,icn,jcn);
 sxxm=sxxm+dsxxm';
 sxym=sxym+dsxym';

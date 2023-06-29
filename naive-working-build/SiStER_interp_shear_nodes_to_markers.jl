@@ -22,6 +22,6 @@ VARnodes = [varS[INDEX] varS[INDEX.+m] varS[INDEX.+(m+1)] varS[INDEX.+1]]';
 varm = SiStER_interp_grid_to_marker_vector(xnodes,ynodes,VARnodes,xm,ym);
 
 
-return [varm]
+return varm
 end
 
