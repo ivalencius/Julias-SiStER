@@ -74,5 +74,5 @@ quad[xRIGHT .& .!yUP] .= 2;
 quad[.!xRIGHT .& yUP] .= 4;
 quad[.!xRIGHT .& .!yUP] .= 1;
 
-return quad, Int.(icn), Int.(jcn)
+return Int.(quad), Int.(icn), Int.(jcn)
 end
