@@ -1,4 +1,5 @@
 using Interpolations
+
 function SiStER_locate_markers_in_grid(xm,ym,x,y,dx,dy)
 # [quad,icn,jcn] = SiStER_locate_markers_in_grid(xm,ym,x,y,dx,dy)
 # Tells a marker which cell (and which quadrant of that cell) it belongs to.
@@ -20,8 +21,13 @@ indY = 1:length(y);
 # Replacement --> use Julia 'broadcast'
 # Ix = minimum.(abs.(broadcast(-, xm, x')));
 # Iy = minimum.(abs.(broadcast(-, ym, y')));
-Ix = interpolate((x,), indX, Gridded(Constant()))(xm);
-Iy = interpolate((y,), indY, Gridded(Constant()))(ym);
+
+# Need to deal with out of bounds indexes --> take closest in bounds value
+Ix = extrapolate(interpolate((x,), indX, Gridded(Constant())), Flat())(xm);
+Iy = extrapolate(interpolate((y,), indY, Gridded(Constant())), Flat())(ym);
+
+Ix = Int.(Ix)
+Iy = Int.(Iy)
 
 # Ix = interp1(x, indX, xm, "nearest", "extrap"); # This is speedup over bsxfun
 # Iy = interp1(y, indY, ym, "nearest", "extrap");
@@ -68,5 +74,5 @@ quad[xRIGHT .& .!yUP] .= 2;
 quad[.!xRIGHT .& yUP] .= 4;
 quad[.!xRIGHT .& .!yUP] .= 1;
 
-return [quad,icn,jcn]
+return quad, Int.(icn), Int.(jcn)
 end
