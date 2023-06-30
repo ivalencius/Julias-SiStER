@@ -10,8 +10,10 @@ if PARAMS.BalanceStickyLayer==1
 # locate height of sticky layer - rock contact on the sides
     # bL=interp1(topo_x,topo_y,0);
     # bR=interp1(topo_x,topo_y,xsize);
-    bL = interpolate((topo_x,), topo_y, Gridded(Constant()))(0);
-    bR = interpolate((topo_x,), topo_y, Gridded(Constant()))(xsize);
+    # bL = interpolate((topo_x,), topo_y, Gridded(Constant()))(0);
+    # bR = interpolate((topo_x,), topo_y, Gridded(Constant()))(xsize);
+    bL = linear_interpolation(topo_x, topo_y)(0);
+    bR = linear_interpolation(topo_x, topo_y)(xsize);
     utop=BC.right[3]*(bL+bR)/xsize;
     ubot=BC.right[3]*(2*ysize-bL-bR)/xsize;
     BC.top[3]=utop;
