@@ -1,4 +1,5 @@
 using RecursiveArrayTools
+using StatsBase
 include("SiStER_seed_markers_uniformly.jl")
 
 function SiStER_patch_marker_holes(icn,jcn,quad,Nx,Ny,Mquad,Mquad_crit,xm,ym,x,y,dx,dy,im,ep,idm,Tm,sxxm,sxym,epNH,epsIIm)
@@ -38,7 +39,11 @@ if display_message_if_empty==1
         #     IND[ind] = s2i[icn[ind], jcn[ind], quad[ind]]
         # end
         # IND = Int.(IND);
-        iEmpty, jEmpty, kEmpty = getindex.(empty, [1 2 3])
+        # iEmpty, jEmpty, kEmpty = getindex.(empty, [1 2 3])
+        temp_inds = getindex.(empty, [1 2 3]);
+        iEmpty = temp_inds[:, 1];
+        jEmpty = temp_inds[:, 2];
+        kEmpty = temp_inds[:, 3];
         for n = 1:min(length(iEmpty), 100)
             println("WARNING ! Empty quadrant number "*string(kEmpty[n])*" in cell i = "*string(iEmpty[n])*" j = "*string(jEmpty[n]))
         end
@@ -50,10 +55,10 @@ end
 mpCrInd = findall(mp.<md_crit);
 # iicr, jjcr, qqcr = ind2sub(size(mp), mpCrInd);
 if !isempty(mpCrInd)
-    iicr, jjcr, qqcr = getindex.(mpCrInd, [1 2 3]);
-    iicr = iicr';
-    jjcr = jjcr';
-    qqcr = qqcr';
+    temp_inds = getindex.(mpCrInd, [1 2 3]);
+    iicr = temp_inds[:, 1]';
+    jjcr = temp_inds[:, 2]';
+    qqcr = temp_inds[:, 3]';
 else
     iicr, jjcr, qqcr = [], [], [];
 end
@@ -85,7 +90,7 @@ if !isempty(iicr) # if there are critical quadrants
         # mark_per_quad markers; then this critical quadrant needs
         Nfix=ceil(qsize/(mdx*mdy))*mark_per_quad;
         Nfix=max(Nfix-mp[iicr[c],jjcr[c],qqcr[c]],1);
-            
+        Nfix = Int.(Nfix);
         # find the coordinates of the upper-left corner of the quadrant
         if qcell==1 || qcell==4
             xcorn=x[jcell];
@@ -102,8 +107,8 @@ if !isempty(iicr) # if there are critical quadrants
         # draw random marker location
         xmrr, ymrr=SiStER_seed_markers_uniformly(xcorn,ycorn,dx[jcell]./2 , dy[icell]./2 ,Nfix)
             
-        xrsd=[xrsd xmrr] 
-        yrsd=[yrsd ymrr];
+        xrsd=append!(xrsd, xmrr);
+        yrsd=append!(yrsd, ymrr);
             
         #### NOW THAT THE NEW MARKERS ARE SEEDED;
         ##### ASSIGN PARAMETERS THAT ARE NEVER STORED ON THE EULERIAN GRID
@@ -115,8 +120,7 @@ if !isempty(iicr) # if there are critical quadrants
         # if that was to happen; let's just draw "im" randomly
             
                        
-        if isempty((ep[icn==icell & jcn==jcell]))==1  
-
+        if isempty((ep[vec((icn.==icell) .& (jcn.==jcell))]))
             println("WARNING ! - EMPTY CELL - SOMETHING IS VERY WRONG...")    
             im_fix=1+floor(rand(1,Nfix)*maximum(im)); # random phase number
             ep_fix=zeros(1,Nfix);
@@ -125,32 +129,28 @@ if !isempty(iicr) # if there are critical quadrants
             sxx_fix=zeros(1,Nfix);
             sxy_fix=zeros(1,Nfix);
             sr_fix=zeros(1,Nfix);
-            
         else
-            
-
             # assign the average phase of the markers that are left in the cell()
-            phase_fix=round(mode[im[(icn.==icell) .& (jcn.==jcell)]]);
+            phase_fix=round(mode(im[vec((icn.==icell) .& (jcn.==jcell))]));
             # assign the greatest plastic strain of the markers that are left in the cell()
-            strain_fix=max((ep[(icn.==icell) .& (jcn.==jcell)]));
-            strainNH_fix=max((epNH[(icn.==icell) .& (jcn.==jcell)]));
+            strain_fix=maximum((ep[vec((icn.==icell) .& (jcn.==jcell))]));
+            strainNH_fix=maximum((epNH[vec((icn.==icell) .& (jcn.==jcell))]));
             # assign the average temperature of the markers that are left in
             # the cell()
-            temp_fix=mean((Tm[(icn.==icell) .& (jcn.==jcell)]));
+            temp_fix=mean((Tm[vec((icn.==icell) .& (jcn.==jcell))]));
             # reassign mean stress / strain rate of markers left in cell()
-            stress_xx_fix=mean((sxxm[(icn.==icell) .& (jcn.==jcell)]));
-            stress_xy_fix=mean((sxym[(icn.==icell) .& (jcn.==jcell)]));
-            strainrate_fix=mean((epsIIm[(icn.==icell) .& (jcn.==jcell)]));
-            
+            stress_xx_fix=mean((sxxm[vec((icn.==icell) .& (jcn.==jcell))]));
+            stress_xy_fix=mean((sxym[vec((icn.==icell) .& (jcn.==jcell))]));
+            strainrate_fix=mean((epsIIm[vec((icn.==icell) .& (jcn.==jcell))]));
         end
 
-        im_fix=[im_fix phase_fix.*ones(1,Nfix)] 
-        ep_fix=[ep_fix strain_fix.*ones(1,Nfix)] 
-        epNH_fix=[epNH_fix strainNH_fix.*ones(1,Nfix)] 
-        te_fix=[te_fix temp_fix.*ones(1,Nfix)] 
-        sxx_fix=[sxx_fix stress_xx_fix.*ones(1,Nfix)] 
-        sxy_fix=[sxy_fix stress_xy_fix.*ones(1,Nfix)] 
-        sr_fix=[sr_fix strainrate_fix.*ones(1,Nfix)];
+        im_fix=append!(im_fix, phase_fix.*ones(Nfix))
+        ep_fix=append!(ep_fix, strain_fix.*ones(1,Nfix))
+        epNH_fix=append!(epNH_fix, strainNH_fix.*ones(1,Nfix))
+        te_fix=append!(te_fix, temp_fix.*ones(1,Nfix))
+        sxx_fix=append!(sxx_fix, stress_xx_fix.*ones(1,Nfix))
+        sxy_fix=append!(sxy_fix, stress_xy_fix.*ones(1,Nfix)) 
+        sr_fix=append!(sr_fix, strainrate_fix.*ones(1,Nfix));
     
     end
 
@@ -161,16 +161,26 @@ if !isempty(iicr) # if there are critical quadrants
     index_fix=maximum(idm)+1:maximum(idm)+Npatch;
 
     Ifix=M+1:1:M+Npatch; # total number of markers added to fix holes in critical quadrants
-    xm[Ifix]=xrsd;
-    ym[Ifix]=yrsd;
-    im[Ifix]=im_fix;
-    ep[Ifix]=ep_fix;
-    epNH[Ifix]=epNH_fix;
-    idm[Ifix]=index_fix;
-    Tm[Ifix]=te_fix;
-    sxxm[Ifix]=sxx_fix;
-    sxym[Ifix]=sxy_fix;
-    epsIIm[Ifix]=sr_fix;
+    # xm[Ifix]=xrsd;
+    # ym[Ifix]=yrsd;
+    # im[Ifix]=im_fix;
+    # ep[Ifix]=ep_fix;
+    # epNH[Ifix]=epNH_fix;
+    # idm[Ifix]=index_fix;
+    # Tm[Ifix]=te_fix;
+    # sxxm[Ifix]=sxx_fix;
+    # sxym[Ifix]=sxy_fix;
+    # epsIIm[Ifix]=sr_fix;
+    xm = append!(xm, xrsd)
+    ym = append!(ym, yrsd)
+    im = append!(im, im_fix)
+    ep = append!(ep, ep_fix)
+    epNH = append!(epNH, epNH_fix)
+    idm = append!(idm, index_fix)
+    Tm = append!(Tm, te_fix)
+    sxxm = append!(sxxm, sxx_fix)
+    sxym = append!(sxym, sxy_fix)
+    epsIIm = append!(epsIIm, sr_fix)
 
     # uncomment to display number of added markers
     #@sprintf("\n%d%s%d%s\n", length(Ifix), ' markers added in ', length(iicr), " cell quadrants.")
