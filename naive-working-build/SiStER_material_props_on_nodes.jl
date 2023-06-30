@@ -87,7 +87,7 @@ EXX_sOLD=SiStER_interp_normal_to_shear_nodes(EXX,dx,dy);
 EXY_nOLD=SiStER_interp_shear_to_normal_nodes(EXY);
 
 #TEMPERATURE ARRAYS NEEDED FOR DUCTILE RHEOLOGY  G.Ito 8/16
-n2interp=SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,Tm');
+n2interp=SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,Tm);
 Ts=n2interp[1];
-n2interp=SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,Tm');
+n2interp=SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,Tm);
 Tn=n2interp[1];
