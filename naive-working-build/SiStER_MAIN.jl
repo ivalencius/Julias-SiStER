@@ -62,10 +62,11 @@ global time=0; # Need to rename time variable??
 using Plots
 pyplot()
 
-global t = 0
+global t = 1
 
 # Start solve
-for temp = 1:Nt
+# for temp = 1:Nt
+for temp = 1:10
     global t = temp
     println("STARTING ITERATION: " * string(t) * " out of " * string(Nt))
     
@@ -89,7 +90,7 @@ for temp = 1:Nt
     # USE STRAIN RATE TO UPDATE STRESSES ON MARKERS
     include("SiStER_update_marker_stresses.jl");
     
-    # # BUILD UP PLASTIC STRAIN IN YIELDING AREAS IF PLASTICITY IS ACTIVATED
+    # BUILD UP PLASTIC STRAIN IN YIELDING AREAS IF PLASTICITY IS ACTIVATED
     if (PARAMS.YNPlas==1)
         include("SiStER_update_ep.jl");
     end

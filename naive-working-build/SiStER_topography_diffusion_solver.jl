@@ -20,7 +20,7 @@ if dt_surf<dt
                            
             end
            
-            println("completed "*string(nsolve)*" iterations to diffuse topography")
+            println("\ncompleted "*string(nsolve)*" iterations to diffuse topography")
 
    
             topo_new=topo_solve;

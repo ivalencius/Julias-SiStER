@@ -25,7 +25,7 @@ ResL2=1;
 
 global pit = 1
 
-for pittemp =1:PARAMS.Npicard_max
+for pittemp = 1:PARAMS.Npicard_max
     
     # SiStER_VEP_rheology cannot access global variable pittemp inside loop
     global pit = pittemp 
@@ -92,43 +92,38 @@ for pittemp =1:PARAMS.Npicard_max
         print("\nFinal residual = "*string(ResL2))
         print("\nWARNING! "*string(pit)*" Picard / approx. Newton iterations failed to converge within tolerance of "*string(PARAMS.conv_crit_ResL2));
     end
+   
+    ## get strain rate on nodes current solution
+    include("SiStER_get_strain_rate.jl")
+    EXXtemp, EXYtemp=SiStER_get_strain_rate(vx,vy,dx,dy,BC);
+
+    # Need to assign to globals
+    global EXX = EXXtemp
+    global EXY = EXYtemp
+
+    EXY_n=SiStER_interp_shear_to_normal_nodes(EXY);       
+    EXX_s=SiStER_interp_normal_to_shear_nodes(EXX,dx,dy); 
+    global epsII_n=sqrt.((EXX.^2)+(EXY_n.^2));
+    global epsII_s=sqrt.((EXX_s.^2)+(EXY.^2));
+
+    # helpful to visualize convergence
+    # figure(1)
+    # pcolor(X,Y,log10(etas))
+    # set(gca,"ydir','reverse")
+    # axis equal
+    # caxis([18 25])
+    # colorbar()
+    # title(num2str(pit))
+    # pause(.001)
+
+    # RESIDUAL FOR INDIVIDUAL VARIABLES
+    # [pres, vxres, vyres]=SiStER_reshape_solver_output[Res,Kc,Nx,Ny];
+    # figure(1)
+    # pcolor(X,Y,vxres)
+    # set(gca,"ydir','reverse")
+    # axis equal
+    # colorbar()
+    # title(num2str(pit))
+    # pause(.001)
 
 end
-   
-## get strain rate on nodes current solution
-include("SiStER_get_strain_rate.jl")
-EXXtemp, EXYtemp=SiStER_get_strain_rate(vx,vy,dx,dy,BC);
-
-# Need to assign to globals
-global EXX = EXXtemp
-global EXY = EXYtemp
-
-EXY_n=SiStER_interp_shear_to_normal_nodes(EXY);       
-EXX_s=SiStER_interp_normal_to_shear_nodes(EXX,dx,dy); 
-global epsII_n=sqrt.((EXX.^2)+(EXY_n.^2));
-global epsII_s=sqrt.((EXX_s.^2)+(EXY.^2));
-
-
-
-# helpful to visualize convergence
-# figure(1)
-# pcolor(X,Y,log10(etas))
-# set(gca,"ydir','reverse")
-# axis equal
-# caxis([18 25])
-# colorbar()
-# title(num2str(pit))
-# pause(.001)
-
-# RESIDUAL FOR INDIVIDUAL VARIABLES
-# [pres, vxres, vyres]=SiStER_reshape_solver_output[Res,Kc,Nx,Ny];
-# figure(1)
-# pcolor(X,Y,vxres)
-# set(gca,"ydir','reverse")
-# axis equal
-# colorbar()
-# title(num2str(pit))
-# pause(.001)
-
-
-# end
