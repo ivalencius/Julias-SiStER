@@ -43,10 +43,10 @@ end
 # THERMAL SOLVE
 include("SiStER_thermal_solver_sparse_CFD.jl")
 T = SiStER_thermal_solver_sparse_CFD(x,y,Told,rhofield,cpfield,kfield,dt_m,BCtherm,zeros(size(T)));
-
+T = T[1];
 
 # temperature change
-dT=T-Told;
+dT=T.-Told;
 # enforce Dirichlet boundary conditions to avoid mismatch between markers
 # & nodes
 if BCtherm.top[1]==1
