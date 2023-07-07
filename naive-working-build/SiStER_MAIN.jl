@@ -56,8 +56,13 @@ println("SiStER_initialize_grid.jl (line 40)")
 global time=0; # Need to rename time variable??
 
 # for t=1:Nt # time loop
+using Plots
+pyplot()
+
 global t = 0
-for temp = 1:3
+
+# Start solve
+for temp = 1:Nt
     global t = temp
     println("STARTING ITERATION: " * string(t) * " out of " * string(Nt))
     
@@ -122,7 +127,18 @@ for temp = 1:3
     println("--------------------------------")
     println("--------------------------------")
     
+    # Create topography plot
+    plot(topo_x, topo_y)
+    yflip!(true)
+    plot!(title = string(time/365.25/24/3600/1000)*" kyrs.", xlabel = "x", ylabel = "y")
+    savefig(pwd()*"\\figures\\"*string(t)*"-topography-plot.png")  
 
+    # Create marker plot
+    # fastscatter(xm(im>1)/1e3,ym(im>1) /1e3,log10(epsIIm(im>1)),'markersize’,2);
+    # plotmask = im .> 1
+    # plotmask = sample(axes(xm, 1), 10000)
+    # scatter(xm[plotmask]./1000, ym[plotmask]./1000, marker_z=log10.(epsIIm[plotmask]), color=:heat, markershape=:circle, msc=:transparent, markersize=5)
+    # yflip!(true)
 end
 
 print("FIN")

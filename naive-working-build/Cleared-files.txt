@@ -4,9 +4,14 @@ Files that have been checked/modified and don't throw errors
 - initialize_marker_positions.m 
     - seed_markers_uniformly.jl
     - locate_markers_in_grid.jl
-- SiSter_interp_phases_to_normal_nodes.jl
+- SiSter_interp_phases_to_normal_nodes.jl --> not fixed
+
 
 
 
 Known issues:
 - SiStER_initialize_marker_positions.jl or SiStER_seed_markers_uniformly.jl is slow
+- SiSter_interp_phases_to_normal/shear_nodes.jl are both slow
+- Creating a (41, 106, 529200) array is slow in SiStER_interp_markers_to_shear_nodes.jl
+- Top layer is roughly 40 units greater than MATLAB soln (w1-4 line 66 SiStER_interp_markers_to_shear_nodes.jl)
+- accumarray may be slow --> test this
