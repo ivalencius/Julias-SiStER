@@ -20,6 +20,9 @@
 InpFil = "SiStER_Input_File_continental_rift.jl"
 include(InpFil)
 
+# Make folder for figures
+mkpath("figures/")
+
 # Redefined functions --> use as needed
 # function meshgrid(x, y)
 #     X = [i for i in x, _ in 1:length(y)]
@@ -103,21 +106,21 @@ for temp = 1:Nt
     include("SiStER_set_timestep.jl")
     global dt_m = SiStER_set_timestep(dx,dy,vx,vy,PARAMS);
 
-#     # ROTATE ELASTIC STRESSES IN CURRENT FLOW FIELD
-#     if (PARAMS.YNElast==1) 
-#         SiStER_rotate_stresses;
-#     end
+    # ROTATE ELASTIC STRESSES IN CURRENT FLOW FIELD
+    if (PARAMS.YNElast==1) 
+        include("SiStER_rotate_stresses.jl");
+    end
     
-#     # EVOLVE TEMPERATURE FIELD THROUGH DIFFUSION
-#     if PARAMS.Tsolve==1
-#         SiStER_thermal_update;
-#     end
+    # EVOLVE TEMPERATURE FIELD THROUGH DIFFUSION
+    if PARAMS.Tsolve==1
+        include("SiStER_thermal_update.jl");
+    end
 
-#     # MARKER ADVECTION; REMOVAL; AND ADDITION #############################
+    # MARKER ADVECTION; REMOVAL; AND ADDITION #############################
     include("SiStER_move_remove_and_reseed_markers.jl");
-#    # advect markers in current flow field
-#     # remove markers if necessary
-#     # add markers if necessary
+    # advect markers in current flow field
+    # remove markers if necessary
+    # add markers if necessary
     include("SiStER_update_topography_markers.jl");
     # here we do the same for the marker chain that keeps track of topography
     #######################################################################
@@ -130,8 +133,8 @@ for temp = 1:Nt
     # Create topography plot
     plot(topo_x, topo_y)
     yflip!(true)
-    plot!(title = string(time/365.25/24/3600/1000)*" kyrs.", xlabel = "x", ylabel = "y")
-    savefig(pwd()*"\\figures\\"*string(t)*"-topography-plot.png")  
+    plot!(title = string(round(time/365.25/24/3600/1000, digits=3))*" kyrs.", xlabel = "x", ylabel = "y")
+    savefig(pwd()*"/figures/"*string(t)*"-topography-plot.png")  
 
     # Create marker plot
     # fastscatter(xm(im>1)/1e3,ym(im>1) /1e3,log10(epsIIm(im>1)),'markersize’,2);
