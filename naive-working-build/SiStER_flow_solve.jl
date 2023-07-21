@@ -93,6 +93,7 @@ for pittemp = 1:PARAMS.Npicard_max
         print("\nWARNING! "*string(pit)*" Picard / approx. Newton iterations failed to converge within tolerance of "*string(PARAMS.conv_crit_ResL2));
     end
    
+# end
     ## get strain rate on nodes current solution
     include("SiStER_get_strain_rate.jl")
     EXXtemp, EXYtemp=SiStER_get_strain_rate(vx,vy,dx,dy,BC);

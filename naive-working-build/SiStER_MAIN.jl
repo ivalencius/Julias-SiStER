@@ -65,8 +65,8 @@ pyplot()
 global t = 1
 
 # Start solve
-# for temp = 1:Nt
-for temp = 1:10
+for temp = 1:Nt
+# for temp = 1:10
     global t = temp
     println("STARTING ITERATION: " * string(t) * " out of " * string(Nt))
     
