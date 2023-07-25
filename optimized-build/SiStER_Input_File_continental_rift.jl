@@ -13,10 +13,10 @@ ysize=30e3;
 # from GRID.x[1] to GRID.x[2], grid size is GRID.dx[1] etc...
 # same for y
 struct grid
-    dx
-    x
-    dy
-    y
+    dx::Array{Float64,1}
+    x::Array{Float64,1}
+    dy::Array{Float64,1}
+    y::Array{Float64,1}
 end
 GRID = grid(
     [2000, 400, 2000],
@@ -44,14 +44,14 @@ Mquad_crit=4; # minimum number of markers allowed in smallest quadrant [for rese
 Nphase=3; # number of phases
 
 mutable struct phase
-    type
-    top
-    bot
-    left
-    right
-    x0
-    y0
-    rad
+    type::Float64
+    top::Float64
+    bot::Float64
+    left::Float64
+    right::Float64
+    x0::Float64
+    y0::Float64
+    rad::Float64
     phase() = new()
 end
 
@@ -80,23 +80,23 @@ GEOM[3].rad=1e3;
 # (and plastic creep to simulate brittle failure)
 
 mutable struct mat
-    phase
-    rho0
-    alpha
-    k
-    cp
-    G
-    pre_diff
-    Ediff
-    ndiff
-    pre_disc
-    Edisc
-    ndisc
-    mu 
-    mumin 
-    Cmax 
-    Cmin 
-    ecrit
+    phase::Float64
+    rho0::Float64   
+    alpha::Float64
+    k::Float64
+    cp::Float64
+    G::Float64
+    pre_diff::Float64
+    Ediff::Float64
+    ndiff::Float64
+    pre_disc::Float64
+    Edisc::Float64
+    ndisc::Float64
+    mu::Float64
+    mumin::Float64
+    Cmax::Float64
+    Cmin::Float64
+    ecrit::Float64
     mat() = new()
 end
 
@@ -181,39 +181,40 @@ MAT[3].ecrit=0.1;
 
 # ADDITIONAL PARAMETERS ###################################################
 mutable struct params
-    YNElast
-    YNPlas
-    tau_heal
-    gx
-    gy
-    fracCFL
-    R
-    etamax
-    etamin
-    Tsolve
-    a0
-    a1 
-    a2 
-    a3 
-    amp
-    lam
-    ynTreset
-    T0
-    rhoref
-    kref 
-    cpref 
-    Ntopo_markers
-    YNSurfaceProcesses
-    topo_kappa
-    Npicard_min
-    Npicard_max
-    conv_crit_ResL2
-    pitswitch
-    p0cell
-    BalanceStickyLayer
-    Nphase
+    YNElast::Int64
+    YNPlas::Int64
+    tau_heal::Float64
+    gx::Float64
+    gy::Float64
+    fracCFL::Float64
+    R::Float64
+    etamax::Float64
+    etamin::Float64
+    Tsolve::Int64
+    a0::Float64
+    a1::Float64
+    a2::Float64
+    a3::Float64
+    amp::Float64
+    lam::Float64
+    ynTreset::Int64
+    T0::Float64
+    rhoref::Float64
+    kref::Float64
+    cpref::Float64
+    Ntopo_markers::Int64
+    YNSurfaceProcesses::Int64
+    topo_kappa::Float64
+    Npicard_min::Int64
+    Npicard_max::Int64
+    conv_crit_ResL2::Float64
+    pitswitch::Int64
+    p0cell::Float64
+    BalanceStickyLayer::Int64
+    Nphase::Int64
     params() = new()
 end
+
 PARAMS = params()
 PARAMS.YNElast=1; # elasticity on [1] | off [0]
 PARAMS.YNPlas=1; # plasticity on [1] | off [0]
@@ -272,7 +273,7 @@ mutable struct bc
     top
     bot
     left
-    right 
+    right
     bc() = new()
 end
 BC = bc()
@@ -295,7 +296,7 @@ mutable struct bctherm
     top
     bot
     left
-    right 
+    right
     bctherm() = new()
 end
 BCtherm = bctherm()
