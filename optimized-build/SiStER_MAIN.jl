@@ -14,6 +14,8 @@
 # All imports
 using Statistics
 using LinearAlgebra
+using Plots
+pyplot()
 
 # All inclusions
 include("SiStER_initialize_grid.jl")
@@ -70,18 +72,23 @@ PARAMS.Nphase = Nphase; # for convenience
 
 # construct staggered grids
 # include("SiStER_initialize_grid.jl")
+# @time = 0.000197 sec (49 allocations: 77.375 KiB)
 (X,Y,x,y,xc,yc,dx,dy,Nx,Ny) = SiStER_initialize_grid(xsize,ysize,GRID);
 
 # initialize marker arrays & positions
-(xm, ym) = SiStER_initialize_marker_positions(xsize,ysize,dx,dy,Mquad); # THIS IS VERY SLOW
+# @time = 33.94 sec (2.99 M allocations: 260.983 GiB, 30.25% fc time, 0.78% compilation time)
+# New: @time = 0.148021 seconds (905.55 k allocations: 98.598 MiB, 4.31% gc time, 66.22% compilation time)
+(xm, ym) = SiStER_initialize_marker_positions(xsize,ysize,dx,dy,Mquad);
 print("**Number of markers: "*string(length(xm))*"**\n");
 
 # locate markers with respect to grid()
+# @time = 1.27 sec (4.35 M allocations: 367.611 MiB, 4,45% gc time, 93.55% compilation time)
 (qd,icn,jcn) = SiStER_locate_markers_in_grid(xm,ym,x,y,dx,dy);
-icn = Int.(icn);
-jcn = Int.(jcn);
+# icn = Int.(icn);
+# jcn = Int.(jcn);
 
 # assign marker phases
+# @time = 0.192908 seconds (881.20 k allocations: 73.391 MiB, 4.83% gc time, 97.98% compilation time)
 im = SiStER_initialize_marker_phases(Nphase,GEOM,xm,ym);
 # im = im[1]; # returned as vector of a vector for some reason
 # initialize marker plastic strain [to zero] & strain rate [to one]
@@ -104,6 +111,7 @@ if PARAMS.ynTreset==1 # reset T=T0 in top layer
 end
 
 # pass initial nodal T to markers
+# @time = 0.504564 seconds (1.58 M allocations: 329.309 MiB, 6.43% gc time, 89.27% compilation time)
 Tm = SiStER_interp_shear_nodes_to_markers(T,x,y,xm,ym,icn,jcn);
 Tm = Tm';
 Tm0 = copy(Tm);
@@ -128,6 +136,7 @@ Ntopo=PARAMS.Ntopo_markers;
 topo_x=LinRange(0, xsize, Ntopo);
 topo_y=GEOM[1].bot.*ones(size(topo_x));
 topo_marker_spacing=mean(diff(topo_x)); # initial mean spacing of topography markers
+
 println("For continental drift: Nx = 106, NY=43 (from MATLAB solution)")
 println("Mismatch due to round() rounding 4.5 to nearest even integer, not up to 5 like in MATLAB")
 println("SiStER_initialize_grid.jl (line 40)")
@@ -137,8 +146,6 @@ println("SiStER_initialize_grid.jl (line 40)")
 time=0; # Need to rename time variable??
 
 # for t=1:Nt # time loop
-using Plots
-pyplot()
 
 # Start solve
 for t = 1:Nt
@@ -156,7 +163,10 @@ for t = 1:Nt
     # for Picard iterations [J.-A.O.]
     # PHASE PROPORTIONS AT NORMAL AND SHEAR NODES. G.Ito 8/16
 
-    phase_n = SiStER_interp_phases_to_normal_nodes(xm,ym,icn,jcn,x,y,im, Nphase); 
+    # Two culprits of slowdown: SiStER_interp_phases_to_normal_nodes and SiStER_interp_phases_to_shear_nodes
+    # @time = 1.407799 seconds (15.12 M allocations: 1.339 GiB, 11.47% gc time, 49.94% compilation time: 3% of which was recompilation)
+    phase_n = SiStER_interp_phases_to_normal_nodes(xm,ym,icn,jcn,x,y,im, Nphase);
+    # @time = 7.894677 seconds (36.21 M allocations: 1.877 GiB, 3.89% gc time, 81.22% compilation time)
     phase_s = SiStER_interp_phases_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,im, Nphase);
 
     # phase_n & _s is a Ny*Nx*Nphase array containing the proportion
