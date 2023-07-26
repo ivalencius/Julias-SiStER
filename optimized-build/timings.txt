@@ -1,0 +1,10 @@
+BEFORE ANY ALTERATIONS
+ - Using @time on the solving loop in SiStER_MAIN.jl:
+    -> 64.284395 seconds (459.54 M allocations: 41.570 GiB, 6.95% gc time, 52.94% compilation time: <1% of which was recompilation)
+    -> Reduces to roughly 27 sec/loop after one loop (still much too slow) -> speed up due to compilation time
+
+Functions to optimize first:
+    - SiStER_interp_phases_to_normal_nodes
+    - SiStER_interp_phases_to_shear_nodes
+    - SiStER_interp_markers_to_normal_nodes
+    - SiStER_interp_markers_to_shear_nodes
