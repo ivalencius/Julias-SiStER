@@ -9,18 +9,6 @@ function SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,quad,x,y,varargin)
 # Modified by B.Z. Klein; Spring 2014; for speedup
 # Modified by B.Z. Klein, Summer 2014, for further speedup [vectorized]
 
-function accumarray(subs, val, fun=sum, fillval=0; sz=maximum(subs,1), issparse=false)
-    counts = Dict()
-    for i = 1:size(subs,1)
-         counts[subs[i,:]]=[get(counts,subs[i,:],[]);val[i...]]
-    end
-    A = fillval*ones(sz...)
-    for j = keys(counts)
-         A[j...] = fun(counts[j])
-    end
-    issparse ? sparse(A) : A
-end
-
 Nx=length(x);
 Ny=length(y);
 dx=diff(x);
@@ -83,7 +71,14 @@ ddx = dx[JCN[cell1]];
 ddy = dy[ICN[cell1]];
 
 wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray(hcat(ICN[cell1], JCN[cell1]), wm1, sz=(Ny, Nx));
+# w1 = accumarray(hcat(ICN[cell1], JCN[cell1]), wm1, sz=(Ny, Nx));
+w1 = zeros((Ny, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell1], JCN[cell1])
+    val = wm1[counter]
+    w1[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 2 [i, j-1, 2]
 
@@ -93,7 +88,14 @@ ddx = dx[JCN[cell2].-1];
 ddy = dy[ICN[cell2]];
 
 wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w2 = accumarray(hcat(ICN[cell2], JCN[cell2]), wm2, sz=(Ny, Nx));
+# w2 = accumarray(hcat(ICN[cell2], JCN[cell2]), wm2, sz=(Ny, Nx));
+w2 = zeros((Ny, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell2], JCN[cell2])
+    val = wm2[counter]
+    w2[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 3 [i-1, j-1, 3]
 
@@ -103,7 +105,14 @@ ddx = dx[JCN[cell3].-1];
 ddy = dy[ICN[cell3].-1];
 
 wm3 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w3 = accumarray(hcat(ICN[cell3], JCN[cell3]), wm3, sz=(Ny, Nx));
+# w3 = accumarray(hcat(ICN[cell3], JCN[cell3]), wm3, sz=(Ny, Nx));
+w3 = zeros((Ny, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell3], JCN[cell3])
+    val = wm3[counter]
+    w3[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 4 [i-1, j, 4]
 
@@ -113,24 +122,74 @@ ddx = dx[JCN[cell4]];
 ddy = dy[ICN[cell4].-1];
 
 wm4 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w4 = accumarray(hcat(ICN[cell4], JCN[cell4]), wm4, sz=(Ny, Nx));
+# w4 = accumarray(hcat(ICN[cell4], JCN[cell4]), wm4, sz=(Ny, Nx));
+w4 = zeros((Ny, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell4], JCN[cell4])
+    val = wm4[counter]
+    w4[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 #loop over material properties to interpolate
 # THIS IS VERY SLOW --> using varargin[vn]*cell1[vn]
 # vn = 50000 it yields 0.0025 for all
 for vn = 1:numV
-    # n2interp[vn] = (
-    #     wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), (varargin[vn]*cell1[vn]).*wm1, sz=(Ny, Nx))./w1 +
-    #     wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), (varargin[vn]*cell2[vn]).*wm2, sz=(Ny, Nx))./w2 +
-    #     wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), (varargin[vn]*cell3[vn]).*wm3, sz=(Ny, Nx))./w3 +
-    #     wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), (varargin[vn]*cell4[vn]).*wm4, sz=(Ny, Nx))./w4
-    #     )./(wc1+wc2+wc4+wc4);
+
+    arr1 = zeros((Ny, Nx));
+    arr2 = zeros((Ny, Nx));
+    arr3 = zeros((Ny, Nx));
+    arr4 = zeros((Ny, Nx));
+
+    # accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(Ny, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell1].*wm1
+    for (i, j) in zip(ICN[cell1], JCN[cell1])
+        val = tmp[counter]
+        arr1[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(Ny, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell2].*wm2
+    for (i, j) in zip(ICN[cell2], JCN[cell2])
+        val = tmp[counter]
+        arr2[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ICN[cell3], JCN[cell3]), varargin[:, vn][cell3].*wm3, sz=(Ny, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell3].*wm3
+    for (i, j) in zip(ICN[cell3], JCN[cell3])
+        val = tmp[counter]
+        arr3[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ICN[cell4], JCN[cell4]), varargin[:, vn][cell4].*wm4, sz=(Ny, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell4].*wm4
+    for (i, j) in zip(ICN[cell4], JCN[cell4])
+        val = tmp[counter]
+        arr4[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
     n2interp[vn] = (
-        wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(Ny, Nx))./w1 +
-        wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(Ny, Nx))./w2 +
-        wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), varargin[:, vn][cell3].*wm3, sz=(Ny, Nx))./w3 +
-        wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), varargin[:, vn][cell4].*wm4, sz=(Ny, Nx))./w4
-        )./(wc1+wc2+wc4+wc4);
+        wc1.*arr1./w1 +
+        wc2.*arr2./w2 +
+        wc3.*arr3./w3 +
+        wc4.*arr4./w4
+        )./(wc1+wc2+wc3+wc4);
+
+    # n2interp[vn] = (
+    #     wc1.*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(Ny, Nx))./w1 +
+    #     wc2.*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(Ny, Nx))./w2 +
+    #     wc3.*accumarray(hcat(ICN[cell3], JCN[cell3]), varargin[:, vn][cell3].*wm3, sz=(Ny, Nx))./w3 +
+    #     wc4.*accumarray(hcat(ICN[cell4], JCN[cell4]), varargin[:, vn][cell4].*wm4, sz=(Ny, Nx))./w4
+    #     )./(wc1+wc2+wc4+wc4);
 end
 
 ## EDGES
@@ -150,7 +209,14 @@ ddy = dy[1];
 dxm = xm[cell1] .- xJCN[cell1];
 dym = ym[cell1] .- yICN[cell1];
 wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray(hcat(ICN[cell1], JCN[cell1]), wm1, sz=(Ny, Nx));
+# w1 = accumarray(hcat(ICN[cell1], JCN[cell1]), wm1, sz=(Ny, Nx));
+w1 = zeros((1, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell1], JCN[cell1])
+    val = wm1[counter]
+    w1[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 2 
 
@@ -162,16 +228,50 @@ ddy = dy[1];
 dxm = xm[cell2] .- xJCN[cell2];
 dym = ym[cell2] .- yICN[cell2];
 wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w2  = accumarray(hcat(ICN[cell2], JCN[cell2]), wm2, sz=(Ny,Nx));
+# w2  = accumarray(hcat(ICN[cell2], JCN[cell2]), wm2, sz=(Ny,Nx));
+w2 = zeros((1, Nx));
+counter = 1
+for (i, j) in zip(ICN[cell2], JCN[cell2])
+    val = wm2[counter]
+    w2[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (
-        wc1*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1, Nx))./w1 +
-        wc2*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1, Nx))./w2
-        )/(wc1+wc2);
-    n2interp[vn][1,2:end] = temp[1, 2:end];
+
+    # accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1, Nx))
+    arr1 = zeros((1, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell1].*wm1
+    for (i, j) in zip(ICN[cell1], JCN[cell1])
+        val = tmp[counter]
+        arr1[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1, Nx))
+    arr2 = zeros((1, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell2].*wm2
+    for (i, j) in zip(ICN[cell2], JCN[cell2])
+        val = tmp[counter]
+        arr2[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    combined = (
+        wc1.*arr1./w1 + 
+        wc2.*arr2./w2
+    )/(wc1+wc2)
+
+    n2interp[vn][1,2:end] = combined[1, 2:end];
+
+    # temp = (
+    #     wc1*accumarray(hcat(ICN[cell1], JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1, Nx))./w1 +
+    #     wc2*accumarray(hcat(ICN[cell2], JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1, Nx))./w2
+    #     )/(wc1+wc2);
 end
 
 ### bottom edge
@@ -189,7 +289,14 @@ ddy = dy[Ny-1];
 dxm = xm[cell1] .- xJCN[cell1];
 dym = ym[cell1] .- y[end-1];
 wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), wm1, sz=(1, Nx));
+# w1 = accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), wm1, sz=(1, Nx));
+w1 = zeros((1, Nx));
+counter = 1
+for (i, j) in zip(ones(Int, sum(cell1)), JCN[cell1])
+    val = wm1[counter]
+    w1[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 2
 
@@ -201,16 +308,48 @@ ddy = dy[Ny-1];
 dxm = xm[cell2] .- xJCN[cell2];
 dym = ym[cell2] .- y[end-1];
 wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w2  = accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), wm2, sz=(1,Nx));
+# w2  = accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), wm2, sz=(1,Nx));
+w2 = zeros((1, Nx));
+counter = 1
+for (i, j) in zip(ones(Int, sum(cell2)), JCN[cell2])
+    val = wm2[counter]
+    w2[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 #loop over material properties to interpolate
-
 for vn = 1:numV
-    temp = (
-        wc1*accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1,Nx))./w1 +
-        wc2*accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1,Nx))./w2
-        )/(wc1+wc2);
-    n2interp[vn][Ny,2:end] = temp[1, 2:end];
+
+    # accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1, Nx))
+    arr1 = zeros((1, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell1].*wm1
+    for (i, j) in zip(ones(Int, sum(cell1)), JCN[cell1])
+        val = tmp[counter]
+        arr1[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1, Nx))
+    arr2 = zeros((1, Nx))
+    counter = 1
+    tmp = varargin[:, vn][cell2].*wm2
+    for (i, j) in zip(ones(Int, sum(cell2)), JCN[cell2])
+        val = tmp[counter]
+        arr2[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    combined = (
+        wc1.*arr1./w1 + 
+        wc2.*arr2./w2
+    )/(wc1+wc2);
+
+    n2interp[vn][Ny,2:end] = combined[1, 2:end];
+    # temp = (
+    #     wc1*accumarray(hcat(ones(Int, sum(cell1)), JCN[cell1]), varargin[:, vn][cell1].*wm1, sz=(1,Nx))./w1 +
+    #     wc2*accumarray(hcat(ones(Int, sum(cell2)), JCN[cell2]), varargin[:, vn][cell2].*wm2, sz=(1,Nx))./w2
+    #     )/(wc1+wc2);
 end
 
 ### left edge
@@ -228,7 +367,14 @@ ddy = dy[ICN[cell1].-1];
 dxm = xm[cell1] .- x[1];
 dym = ym[cell1] .- yICN[cell1];
 wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
+# w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
+w1 = zeros((Ny, 1));
+counter = 1
+for (i, j) in zip(ICN[cell1], ones(Int, sum(cell1)))
+    val = wm1[counter]
+    w1[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 2
 
@@ -240,16 +386,50 @@ ddy = dy[ICN[cell2]];
 dxm = xm[cell2] .- x[1];
 dym = ym[cell2] .- yICN[cell2];
 wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
+# w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
+w2 = zeros((Ny, 1));
+counter = 1
+for (i, j) in zip(ICN[cell2], ones(Int, sum(cell2)))
+    val = wm2[counter]
+    w2[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (
-        wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
-        wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
-        )/(wc1+wc2);
-    n2interp[vn][2:end-1, 1] = temp[2:end-1];
+
+    # accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))
+    arr1 = zeros((Ny, 1))
+    counter = 1
+    tmp = varargin[:, vn][cell1].*wm1
+    for (i, j) in zip(ICN[cell1], ones(Int, sum(cell1)))
+        val = tmp[counter]
+        arr1[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    # accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))
+    arr2 = zeros((Ny, 1))
+    counter = 1
+    tmp = varargin[:, vn][cell2].*wm2
+    for (i, j) in zip(ICN[cell2], ones(Int, sum(cell2)))
+        val = tmp[counter]
+        arr2[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+    
+    combined = (
+        wc1.*arr1./w1 + 
+        wc2.*arr2./w2
+    )/(wc1+wc2);
+
+    n2interp[vn][2:end-1, 1] = combined[2:end-1];
+
+    # temp = (
+    #     wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
+    #     wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
+    #     )/(wc1+wc2);
 end
 
 ### right edge
@@ -267,7 +447,14 @@ ddy = dy[ICN[cell1].-1];
 dxm = xm[cell1] .- x[Nx-1];
 dym = ym[cell1] .- yICN[cell1];
 wm1 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
+# w1 = accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), wm1, sz=(Ny,1));
+w1 = zeros((Ny, 1));
+counter = 1
+for (i, j) in zip(ICN[cell1], ones(Int, sum(cell1)))
+    val = wm1[counter]
+    w1[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 # cell 2
 
@@ -279,16 +466,50 @@ ddy = dy[ICN[cell2]];
 dxm = xm[cell2] .- x[Nx-1];
 dym = ym[cell2] .- yICN[cell2];
 wm2 = 1 .- (dxm.*dym + (ddx.-dxm).*dym + (ddy.-dym).*dxm)./(ddx.*ddy);
-w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
+# w2 = accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), wm2, sz=(Ny,1));
+w2 = zeros((Ny, 1));
+counter = 1
+for (i, j) in zip(ICN[cell2], ones(Int, sum(cell2)))
+    val = wm2[counter]
+    w2[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 #loop over material properties to interpolate
 
 for vn = 1:numV
-    temp = (
-        wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
-        wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
-        )/(wc1+wc2);
-    n2interp[vn][2:end-1, Nx] = temp[2:end-1];
+
+    # accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))
+    arr1 = zeros((Ny, 1))
+    counter = 1
+    tmp = varargin[:, vn][cell1].*wm1
+    for (i, j) in zip(ICN[cell1], ones(Int, sum(cell1)))
+        val = tmp[counter]
+        arr1[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+    
+    # accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))
+    arr2 = zeros((Ny, 1))
+    counter = 1
+    tmp = varargin[:, vn][cell2].*wm2
+    for (i, j) in zip(ICN[cell2], ones(Int, sum(cell2)))
+        val = tmp[counter]
+        arr2[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    combined = (
+        wc1.*arr1./w1 + 
+        wc2.*arr2./w2
+    )/(wc1+wc2);
+
+    n2interp[vn][2:end-1, Nx] = combined[2:end-1];
+    
+    # temp = (
+    #     wc1*accumarray(hcat(ICN[cell1], ones(Int, sum(cell1))), varargin[:, vn][cell1].*wm1, sz=(Ny,1))./w1 +
+    #     wc2*accumarray(hcat(ICN[cell2], ones(Int, sum(cell2))), varargin[:, vn][cell2].*wm2, sz=(Ny,1))./w2
+    #     )/(wc1+wc2);
 end
 
 ## CORNERS

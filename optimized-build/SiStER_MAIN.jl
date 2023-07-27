@@ -8,10 +8,6 @@
 # J.-A. Olive; B.Z. Klein; E. Mittelstaedt; M. Behn; G. Ito; S. Howell
 # jaolive <at> ldeo.columbia.edu
 # March 2011 - April 2017
-
-# INITIALIZATION
-
-# All imports
 using Statistics
 using LinearAlgebra
 using Plots
@@ -47,14 +43,20 @@ include("SiStER_locate_markers_in_grid.jl")
 include("SiStER_patch_marker_holes.jl")
 include("SiStER_topography_diffusion_solver.jl")
 
+# INITIALIZATION
+InpFil = "SiStER_Input_File_continental_rift.jl"
+include(InpFil)
+
+# include("SiStER_Help.jl")
+# using .SiStER_Help
+# names(SiStER_Help)
+
 # Input File: loads parameter values; model geometry; boundary conditions
 # if exist("running_from_SiStER_RUN','var")==0
 #     clear() 
 #     InpFil = input("Input file ? ','s");
 # end
 # run(InpFil)
-InpFil = "SiStER_Input_File_continental_rift.jl"
-include(InpFil)
 
 # Make folder for figures
 mkpath("figures/")
@@ -141,15 +143,19 @@ println("For continental drift: Nx = 106, NY=43 (from MATLAB solution)")
 println("Mismatch due to round() rounding 4.5 to nearest even integer, not up to 5 like in MATLAB")
 println("SiStER_initialize_grid.jl (line 40)")
 
+# Save variables for test
+# using JLD2
+# @save "function_tests/test-vars.jld2" x y xm ym icn jcn im qd
+
 ### BEGIN TIME LOOP ############################################################
 
-time=0; # Need to rename time variable??
-
-# for t=1:Nt # time loop
+time=0;
 
 # Start solve
 for t = 1:Nt
-# for t = 1:1
+# for t = 1:3
+
+    timing = @elapsed begin
     println("STARTING ITERATION: " * string(t) * " out of " * string(Nt))
     
     # update time
@@ -173,33 +179,29 @@ for t = 1:Nt
     # of each phase at each node - this gets used in get_ductile_rheology
     # functions()
 
-    # OLD WAY TO INTERP PHASES: ONLY WORKED WELL WHEN MIXING 2 CONSECUTIVELY 
-    # NUMBERED PHASES AT ANY NODE
-    # [n2interp] = SiStER_interp_markers_to_normal_nodes[xm,ym,icn,jcn,x,y,im];
-    # phase_n=n2interp[1].data;
-    # phase_n=round(phase_n*1e10)/1e10;  #prevents a case in which phase_n>NPhase
-    # 
-    # [n2interp] = SiStER_interp_markers_to_shear_nodes[xm,ym,icn,jcn,qd,x,y,im];
-    # phase_s=n2interp[1].data;
-    # phase_s=round(phase_s*1e10)/1e10; #prevents a case in which phase_n>NPhase
-
     # GET MARKER DENSITIES
+    # @time = 0.088335 seconds (315.10 k allocations: 33.626 MiB, 95.79% compilation time)
     rhom = SiStER_get_density(im,Tm,MAT);
 
     # pass density to nodes
+    # @time = 6.058524 seconds (30.60 M allocations: 1.600 GiB, 3.12% gc time, 79.76% compilation time)
     n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,rhom);
     rho  = n2interp[1];
 
 
     # GET MARKER ELASTIC PROPERTIES  G.Ito 8/16
+    # @time = 0.041856 seconds (35.91 k allocations: 10.643 MiB, 92.30% compilation time)
     Gm = SiStER_get_elastic_moduli(im,MAT);
     # pass shear modulus to nodes
+    # @time = 1.617598 seconds (25.98 M allocations: 2.372 GiB, 20.31% gc time, 15.05% compilation time)
     n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,1 ./ Gm);
     Gn=1 ./ (n2interp[1]);
+    # @time = 1.204658 seconds (25.46 M allocations: 1.303 GiB, 10.30% gc time)
     n2interp = SiStER_interp_markers_to_shear_nodes(xm,ym,icn,jcn,qd,x,y,1 ./ Gm);
     Gs = 1 ./ (n2interp[1]);   
 
     # PROPERTIES FOR PLASTICITY  G.Ito 8/16
+    # @time = 0.070012 seconds (179.41 k allocations: 24.294 MiB, 94.92% compilation time)
     cohes=SiStER_get_cohesion(im, ep, MAT); # cohesion depends on plastic strain
     n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,cohes);
     Cohes_n=n2interp[1];
@@ -207,6 +209,7 @@ for t = 1:Nt
     Cohes_s = n2interp[1];  
 
     # GET FRICTION BASED ON MARKERS J.A. Olive 4/17
+    # @time = 0.052289 seconds (26.15 k allocations: 13.962 MiB, 92.95% compilation time)
     fric=SiStER_get_friction(im,ep,MAT); # friction depends on plastic strain
     n2interp = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,fric);
     Mu_n=n2interp[1];
@@ -256,10 +259,6 @@ for t = 1:Nt
     # BALANCE FLUXES ### JAO July 16; 2015
     # RE-ADJUST BCs SO FLUX OF ROCK AND STICKY AIR MATERIAL ARE CONSERVED
     # locate height of sticky layer - rock contact on the sides
-        # bL=interp1(topo_x,topo_y,0);
-        # bR=interp1(topo_x,topo_y,xsize);
-        # bL = interpolate((topo_x,), topo_y, Gridded(Constant()))(0);
-        # bR = interpolate((topo_x,), topo_y, Gridded(Constant()))(xsize);
         bL = linear_interpolation(topo_x, topo_y)(0);
         bR = linear_interpolation(topo_x, topo_y)(xsize);
         utop=BC.right[3]*(bL+bR)/xsize;
@@ -271,6 +270,7 @@ for t = 1:Nt
 
     ResL2=1; 
 
+    # @time = 6.955675 seconds (8.18 M allocations: 6.318 GiB, 5.02% gc time, 37.41% compilation time)
     for pit = 1:PARAMS.Npicard_max
         
         if pit==1
@@ -403,10 +403,6 @@ for t = 1:Nt
             # incorporate plastic viscosity into effective viscosity
             etan_new[2:end,2:end]=((1 ./eta_plas_n[2:end,2:end]) + (1 ./etan_new[2:end,2:end]) .+ (1 ./PARAMS.etamax)).^-1;
             etas_new=((1 ./eta_plas_s) + (1 ./etas_new) .+ (1 ./PARAMS.etamax)).^-1;
-
-            # possible alternative = sharp viscosity drop where yielding occurs [may be less stable]
-            # etan_new[n_nodes_yield]=eta_plas_n[n_nodes_yield];
-            # etas_new[s_nodes_yield]=eta_plas_s[s_nodes_yield];
         else
             etan_new[2:end,2:end]=((1 ./etan_new[2:end,2:end]) .+ (1 ./PARAMS.etamax)).^-1;
             etas_new=((1 ./etas_new) .+ (1 ./PARAMS.etamax)).^-1;
@@ -494,27 +490,6 @@ for t = 1:Nt
         global EXX_s=SiStER_interp_normal_to_shear_nodes(EXX,dx,dy); 
         epsII_n=sqrt.((EXX.^2)+(EXY_n.^2));
         epsII_s=sqrt.((EXX_s.^2)+(EXY.^2));
-
-        # helpful to visualize convergence
-        # figure(1)
-        # pcolor(X,Y,log10(etas))
-        # set(gca,"ydir','reverse")
-        # axis equal
-        # caxis([18 25])
-        # colorbar()
-        # title(num2str(pit))
-        # pause(.001)
-
-        # RESIDUAL FOR INDIVIDUAL VARIABLES
-        # [pres, vxres, vyres]=SiStER_reshape_solver_output[Res,Kc,Nx,Ny];
-        # figure(1)
-        # pcolor(X,Y,vxres)
-        # set(gca,"ydir','reverse")
-        # axis equal
-        # colorbar()
-        # title(num2str(pit))
-        # pause(.001)
-
     end
 
     ### End of SiStER_flow_solve #################$#############################
@@ -539,6 +514,7 @@ for t = 1:Nt
     ### End of Sister_update_marker_stresses ###################################
     
     # BUILD UP PLASTIC STRAIN IN YIELDING AREAS IF PLASTICITY IS ACTIVATED
+    # @time = 0.218199 seconds (515.86 k allocations: 272.884 MiB, 9.46% gc time, 74.46% compilation time)
     if (PARAMS.YNPlas==1)
         ### Start of SiStER_update_ep ##########################################
         # PLASTIC [EXCLUDING ELASTIC] STRAIN ACCUMULATION
@@ -561,18 +537,20 @@ for t = 1:Nt
         ### End of SiStER_update_ep ############################################
     end
   
-#     # OUTPUT VARIABLES OF INTEREST [prior to rotation & advection]
-#     if (t%dt_out==0 && dt_out>0) || t==1 || t==Nt # SAVING SELECTED OUTPUT
-#         disp("SAVING SELECTED VARIABLES TO OUTPUT FILE") 
-#         filename=string(t);
-#         [etam]=SiStER_interp_shear_nodes_to_markers[etas,x,y,xm,ym,icn,jcn]; # to visualize viscosity on markers
-#         save(filename,"X','Y','vx','vy','p','time','xm','ym','etam','rhom','BC','etan','Tm','im','idm','epsIIm','sxxm','sxym','ep','epNH','icn','jcn','qd','topo_x','topo_y")
-#     end
+    # OUTPUT VARIABLES OF INTEREST [prior to rotation & advection] --> not implemented
+    # if (t%dt_out==0 && dt_out>0) || t==1 || t==Nt # SAVING SELECTED OUTPUT
+        # println("SAVING SELECTED VARIABLES TO OUTPUT FILE") 
+        # filename=string(t);
+        # [etam]=SiStER_interp_shear_nodes_to_markers[etas,x,y,xm,ym,icn,jcn]; # to visualize viscosity on markers
+        # save(filename,"X','Y','vx','vy','p','time','xm','ym','etam','rhom','BC','etan','Tm','im','idm','epsIIm','sxxm','sxym','ep','epNH','icn','jcn','qd','topo_x','topo_y")
+    # end
     
     # SET ADVECTION TIME STEP BASED ON CURRENT FLOW SOLUTION
+    # @time = 0.056206 seconds (112.89 k allocations: 7.596 MiB, 99.92% compilation time)
     global dt_m = SiStER_set_timestep(dx,dy,vx,vy,PARAMS);
 
     # ROTATE ELASTIC STRESSES IN CURRENT FLOW FIELD
+    # @time = 0.229503 seconds (683.16 k allocations: 311.985 MiB, 5.28% gc time, 72.22% compilation time)
     if (PARAMS.YNElast==1) 
         ### Start of SiStER_rotate_stresses ####################################
         # update elastic stresses on markers following a solve [but before advection]
@@ -580,14 +558,15 @@ for t = 1:Nt
         om = SiStER_interp_shear_nodes_to_markers(ROT,x,y,xm,ym,icn,jcn);
 
         # rotate markers
-        alpha = (om*dt_m)';
-        sxymtemp = (sxxm.*sin.(2 .*alpha)) + (sxym.*cos.(2 .*alpha));
-        sxxm = (sxxm.*(cos.(alpha).^2 - sin.(alpha).^2)) - (sxym.*sin.(2 .*alpha));
+        α = (om*dt_m)';
+        sxymtemp = (sxxm.*sin.(2 .*α)) + (sxym.*cos.(2 .*α));
+        sxxm = (sxxm.*(cos.(α).^2 - sin.(α).^2)) - (sxym.*sin.(2 .*α));
         global sxym=sxymtemp;
         ### End of SiStER_rotate_stresses ######################################
     end
     
     # EVOLVE TEMPERATURE FIELD THROUGH DIFFUSION
+    # @time = 1.501444 seconds (25.62 M allocations: 1.542 GiB, 14.99% gc time, 8.72% compilation time)
     if PARAMS.Tsolve==1
         ### Start of SiStER_thermal_update #####################################
         # SiStER THERMAL SOLVE
@@ -628,6 +607,7 @@ for t = 1:Nt
         end
 
         # THERMAL SOLVE
+        # @time = 0.086090 seconds (61.87 k allocations: 13.556 MiB, 94.96% compilation time)
         global T = SiStER_thermal_solver_sparse_CFD(x,y,Told,rhofield,cpfield,kfield,dt_m,BCtherm,zeros(size(T)))[1];
 
         # temperature change
@@ -647,6 +627,7 @@ for t = 1:Nt
             dT[:,Nx].=0;
         end
 
+        # @time = 0.106679 seconds (86 allocations: 226.101 MiB, 63.78% gc time)
         global Tm = SiStER_interp_shear_nodes_to_markers(T,x,y,xm,ym,icn,jcn);
 
         if PARAMS.ynTreset==1 # reset T=T0 in top layer
@@ -657,6 +638,7 @@ for t = 1:Nt
 
     # MARKER ADVECTION; REMOVAL; AND ADDITION #############################
     ### Start of SiStER_move_remove_and_reseed_markers #########################
+    # @time = 4.062938 seconds (4.23 M allocations: 3.528 GiB, 2.80% gc time, 78.01% compilation time)
     xm_new, ym_new, _, _ = SiStER_advect_markers(x,y,xm,ym,dx,dy,dt_m,vx,vy);
 
     global xm = copy(xm_new);
@@ -680,6 +662,7 @@ for t = 1:Nt
     global epsIIm=epsIIm[Iin];
 
     # locate advected markers with respect to the eulerian grid()
+    # @time = 0.085912 seconds (176 allocations: 105.934 MiB)
     quadtemp, icntemp, jcntemp = SiStER_locate_markers_in_grid(xm,ym,x,y,dx,dy);
     global quad = quadtemp
     global icn = icntemp
@@ -690,6 +673,7 @@ for t = 1:Nt
     # those new markers immediately get assigned a value of phase [im], index 
     # (idm) & accumulated plastic strain [ep], i.e., the 2 variables that never get()
     # passed to nodes. 
+    # @time = 0.422957 seconds (1.91 M allocations: 121.505 MiB, 8.41% gc time, 99.63% compilation time)
     xm, ym, im, Ifix, mp, ep, idm, Tm, sxxm, sxym, epNH, epsIIm =SiStER_patch_marker_holes(icn,jcn,quad,Nx,Ny,Mquad,Mquad_crit,xm,ym,x,y,dx,dy,im,ep,idm,Tm,sxxm,sxym,epNH, epsIIm);    
 
     # then they get assigned P; epsII & stresses from grid values
@@ -725,6 +709,7 @@ for t = 1:Nt
     ### Start of SiStER_update_topography_markers ##############################
     # advect the marker chain that keeps track of topography 
     # in the current flow field
+    # @time = 3.550728 seconds (4.76 M allocations: 260.666 MiB, 99.96% compilation time)
     topo_xtemp, topo_ytemp = SiStER_advect_markers(x,y,topo_x,topo_y,dx,dy,dt_m,vx,vy);
     global topo_x = topo_xtemp
     global topo_y = topo_ytemp
@@ -753,6 +738,7 @@ for t = 1:Nt
     topo_x=push!(pushfirst!(topo_x, 0), xsize);
     topo_y=push!(pushfirst!(topo_y, topoL), topoR);
 
+    # @time = 0.314203 seconds (751.34 k allocations: 52.225 MiB, 93.01% compilation time: 2% of which was recompilation)
     if PARAMS.YNSurfaceProcesses==1
         # ERODE TOPOGRAPHY
         topo_y=SiStER_topography_diffusion_solver(topo_x,topo_y,dt_m,PARAMS.topo_kappa);
@@ -764,6 +750,7 @@ for t = 1:Nt
     end
 
     # if there has been too much stretching; regrid the surface topography
+    # @time = 0.006591 seconds (422 allocations: 26.875 KiB, 99.53% compilation time)
     if maximum(diff(topo_x))>5*topo_marker_spacing || !issorted(topo_x)
         # surface regridding happens if somewhere 2 topo markers have been
         # stretched apart by more than 5 times the inital mean marker spacing
@@ -782,13 +769,8 @@ for t = 1:Nt
  
  
     #######################################################################
-
-    println("---------------")
-    println("END OF ITERATION: "* string(t) *" out of "* string(Nt) *" - SIMULATION TIME: "* string(time/365.25/24/3600/1000) *" kyrs.")
-    println("--------------------------------")
-    println("--------------------------------")
     
-    # Create topography plot
+    # Create topography plot --> slow first time it is plotted
     plot(topo_x, topo_y)
     # scatter!(topo_x, topo_y, c="red")
     # plot!(xlims=(0,Inf), ylims=(0, Inf))
@@ -803,8 +785,14 @@ for t = 1:Nt
     # plotmask = sample(axes(xm, 1), 10000)
     # scatter(xm[plotmask]./1000, ym[plotmask]./1000, marker_z=log10.(epsIIm[plotmask]), color=:heat, markershape=:circle, msc=:transparent, markersize=5)
     # yflip!(true)
+    end
+
+    println("TIME ELAPSED: "*string(timing)*" seconds")
+
+    println("---------------")
+    println("END OF ITERATION: "* string(t) *" out of "* string(Nt) *" - SIMULATION TIME: "* string(time/365.25/24/3600/1000) *" kyrs.")
+    println("--------------------------------")
+    println("--------------------------------")
 end
 
 print("FIN")
-
-    

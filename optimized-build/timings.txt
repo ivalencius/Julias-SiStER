@@ -1,10 +1,19 @@
 BEFORE ANY ALTERATIONS
- - Using @time on the solving loop in SiStER_MAIN.jl:
-    -> 64.284395 seconds (459.54 M allocations: 41.570 GiB, 6.95% gc time, 52.94% compilation time: <1% of which was recompilation)
-    -> Reduces to roughly 27 sec/loop after one loop (still much too slow) -> speed up due to compilation time
+    - Using @time on the solving loop in SiStER_MAIN.jl:
+        -> 64.284395 seconds (459.54 M allocations: 41.570 GiB, 6.95% gc time, 52.94% compilation time: <1% of which was recompilation)
+        -> Reduces to roughly 27 sec/loop after one loop (still much too slow) -> speed up due to compilation time
 
-Functions to optimize first:
+From function_tests/accumarray_test.jl
+    - Found an alternative to accumarray which is much faster
+    - 99% speedup is achieved using tailored accumarray function 
+    - Calling method outside a function is slightly faster but halves allocation memory
+        -> Did not use new method in a function when optimizing
+
+After optimizing:
     - SiStER_interp_phases_to_normal_nodes
     - SiStER_interp_phases_to_shear_nodes
     - SiStER_interp_markers_to_normal_nodes
     - SiStER_interp_markers_to_shear_nodes
+    - Time of first loops: 43.3 seconds
+    - Time of subsequent loops: 7.9 sec
+        -> !! Big Speedup Already !!

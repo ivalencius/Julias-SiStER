@@ -1,5 +1,10 @@
 using RecursiveArrayTools
-using GroupSlices
+
+function meshgrid(x, y)
+    X = [i for i in x, _ in 1:length(y)]
+    Y = [j for _ in 1:length(x), j in y]
+    return X', Y'
+end
 
 function SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,varargin)
 # [n2interp] = SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,varargin)
@@ -8,24 +13,6 @@ function SiStER_interp_markers_to_normal_nodes(xm,ym,icn,jcn,x,y,varargin)
 # First cut - J.A. Olive; March 2011
 # Modified by E. Mittelstaedt; April 2011 to allow multiple inputs  
 # Modified by B.Z. Klein; Spring 2014 for speedup
-
-function accumarray(subs, val, fun=sum, fillval=0; sz=maximum(subs,1), issparse=false)
-    counts = Dict()
-    for i = 1:size(subs,1)
-         counts[subs[i,:]]=[get(counts,subs[i,:],[]);val[i...]]
-    end
-    A = fillval*ones(sz...)
-    for j = keys(counts)
-         A[j...] = fun(counts[j])
-    end
-    issparse ? sparse(A) : A
-end
-
-function meshgrid(x, y)
-    X = [i for i in x, _ in 1:length(y)]
-    Y = [j for _ in 1:length(x), j in y]
-    return X', Y'
-end
 
 Nx=length(x);
 Ny=length(y);
@@ -57,14 +44,29 @@ AMvec = abs.((xm .- XN[INDEX]).*(ym .- YN[INDEX]));
 WMvec = (AcCell[INDEX] .- AMvec)./AcCell[INDEX];
 
 # From SiStER_material_props_on_nodes.jl line 43 --> this shouldnt have all 0's at bottom
-w = accumarray(hcat(icn', jcn'), WMvec, sz=(Ny-1, Nx-1));
+# w = accumarray(hcat(icn', jcn'), WMvec, sz=(Ny-1, Nx-1));
+w = zeros((Ny-1, Nx-1));
+counter = 1
+for (i, j) in zip(icn', jcn')
+    val = WMvec[counter]
+    w[i, j] += isnan(val) ? 0 : val
+    counter+=1;
+end
 
 for vn = 1:numV
     VecData = varargin[:, vn].*WMvec;
-    n2interp[vn][2:Ny,2:Nx] = accumarray(hcat(icn', jcn'), VecData, sz=(Ny-1, Nx-1))./w;
+
+    # accumarray(hcat(icn', jcn'), VecData, sz=(Ny-1, Nx-1))
+    arr = zeros((Ny-1, Nx-1));
+    counter = 1
+    for (i, j) in zip(icn', jcn')
+        val = VecData[counter]
+        arr[i, j] += isnan(val) ? 0 : val
+        counter+=1;
+    end
+
+    n2interp[vn][2:Ny,2:Nx] = arr./w;
 end
-
-
 
 return n2interp
 end
